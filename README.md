@@ -117,7 +117,7 @@ You can add this project as a Spring Boot starter to your project, for example u
 
 With Spring Boot, everything is configured out of the box.
 
-# Non-Spring
+### Non-Spring
 
 If you are not using Spring Boot you can add the extension like this:
 
