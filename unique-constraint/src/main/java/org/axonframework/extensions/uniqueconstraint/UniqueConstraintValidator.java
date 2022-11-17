@@ -43,15 +43,34 @@ public class UniqueConstraintValidator {
             return this;
         }
 
+        /**
+         * Will store the current values, execute the interceptorChain provided and compare the values. If values have
+         * changed, will try to claim or unclaim the constraints.
+         *
+         * @param interceptorChain The {@link InterceptorChain} provided by the
+         *                         {@link org.axonframework.modelling.command.CommandHandlerInterceptor} annotated
+         *                         method.
+         * @throws ConstraintAlreadyClaimedException If a constraint was already claimed
+         */
         public Object checkForInterceptor(InterceptorChain interceptorChain) throws Exception {
             Map<String, Object> valuesBefore = getValues();
             Object proceed = interceptorChain.proceed();
             Map<String, Object> valuesAfter = getValues();
 
-            constraintMap.keySet().forEach(key -> {
-                executeChecksAndClaimsForConstraint(key, valuesBefore.get(key), valuesAfter.get(key));
-            });
+            constraintMap.keySet().forEach(key -> executeChecksAndClaimsForConstraint(key,
+                                                                                      valuesBefore.get(key),
+                                                                                      valuesAfter.get(key)));
             return proceed;
+        }
+
+        /**
+         * Will check the values of the aggregate as they are now. Usable as the last statement in your constructor,
+         * after all EventSourcingHandlers have been invoked.
+         *
+         * @throws ConstraintAlreadyClaimedException If a constraint was already claimed
+         */
+        public void checkNow() {
+            getValues().forEach((key, value) -> executeChecksAndClaimsForConstraint(key, null, value));
         }
 
         private Map<String, Object> getValues() {
@@ -120,7 +139,7 @@ public class UniqueConstraintValidator {
             }
 
             if (!(previousClaim instanceof ConstraintClaimedEvent)) {
-                throw new IllegalStateException(
+                throw new ConstraintAlreadyClaimedException(
                         String.format("Unknown event of type %s. Can not process unique constraints.",
                                       previousClaim.getPayload().getClass().getName()));
             }
