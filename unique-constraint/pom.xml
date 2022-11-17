@@ -7,22 +7,24 @@
     <parent>
         <groupId>org.axonframework.extensions.uniqueconstraint</groupId>
         <artifactId>extension-unique-constraint-parent</artifactId>
-        <version>4.7.0-SNAPSHOT</version>
+        <version>0.0.1-SNAPSHOT</version>
     </parent>
 
     <artifactId>extension-unique-constraint</artifactId>
-    <version>4.7.0-SNAPSHOT</version>
+    <version>0.0.1-SNAPSHOT</version>
 
     <dependencies>
         <dependency>
             <groupId>org.axonframework</groupId>
             <artifactId>axon-configuration</artifactId>
             <version>${axon.version}</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.axonframework</groupId>
             <artifactId>axon-eventsourcing</artifactId>
             <version>${axon.version}</version>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 </project>
