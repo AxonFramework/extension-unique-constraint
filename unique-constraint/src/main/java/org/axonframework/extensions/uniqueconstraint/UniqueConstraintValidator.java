@@ -5,6 +5,7 @@ import org.axonframework.eventhandling.DomainEventMessage;
 import org.axonframework.eventhandling.GenericDomainEventMessage;
 import org.axonframework.eventsourcing.eventstore.EventStore;
 import org.axonframework.messaging.InterceptorChain;
+import org.axonframework.messaging.unitofwork.CurrentUnitOfWork;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -139,20 +140,24 @@ public class UniqueConstraintValidator {
             }
 
             if (!(previousClaim instanceof ConstraintClaimedEvent)) {
-                throw new ConstraintAlreadyClaimedException(
-                        String.format("Unknown event of type %s. Can not process unique constraints.",
-                                      previousClaim.getPayload().getClass().getName()));
+                CurrentUnitOfWork.get().onPrepareCommit(uow -> {
+                    throw new ConstraintAlreadyClaimedException(
+                            String.format("Unknown event of type %s. Can not process unique constraints.",
+                                          previousClaim.getPayload().getClass().getName()));
+                });
             }
 
             ConstraintClaimedEvent event = (ConstraintClaimedEvent) previousClaim.getPayload();
 
             if (!event.getAggregateId().equals(getAggregateId())) {
-                throw new IllegalStateException(
-                        String.format(
-                                "Unique constraint %s was already claimed by aggregate %s. Can not claim is for aggregate %s.",
-                                constraintName,
-                                previousClaim.getPayload(),
-                                getAggregateId()));
+                CurrentUnitOfWork.get().onPrepareCommit(uow -> {
+                    throw new IllegalStateException(
+                            String.format(
+                                    "Unique constraint %s was already claimed by aggregate %s. Can not claim is for aggregate %s.",
+                                    constraintName,
+                                    previousClaim.getPayload(),
+                                    getAggregateId()));
+                });
             }
         }
 
