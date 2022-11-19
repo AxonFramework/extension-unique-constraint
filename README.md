@@ -1,7 +1,10 @@
 # Axon Framework Unique Constraint Extension
+![Build status](https://img.shields.io/github/checks-status/AxonFramework/extension-unique-constraint/main)
 
 **Experimental** extension to [Axon Framework](https://axoniq.io) that makes it easier for uniqueness
 constraints to be enforced across multiple instances of an aggregate.
+
+**No release is currently available yet.**
 
 ## Background
 
