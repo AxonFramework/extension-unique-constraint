@@ -2,7 +2,6 @@ package org.axonframework.extensions.uniqueconstraint;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import javax.xml.bind.DatatypeConverter;
 
 /**
  * Creates a SHA-256 hash out of the constraint's name and value, to guarantee a unique value that is not reversible.
@@ -35,6 +34,22 @@ public class Sha256ConstraintValueProvider implements ConstraintValueProvider {
         String toHash = constraintName + "__" + value.toString();
 
         byte[] byteDigest = digest.digest(toHash.getBytes(StandardCharsets.UTF_8));
-        return DatatypeConverter.printHexBinary(byteDigest).toUpperCase();
+        return bytesToHex(byteDigest).toUpperCase();
+    }
+
+    private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
+
+    /**
+     * Thanks to <a href="https://stackoverflow.com/questions/9655181/how-to-convert-a-byte-array-to-a-hex-string-in-java">this StackOverflow post</a>
+     * for removing the dependency to JAXB.
+     */
+    private static String bytesToHex(byte[] bytes) {
+        char[] hexChars = new char[bytes.length * 2];
+        for (int j = 0; j < bytes.length; j++) {
+            int v = bytes[j] & 0xFF;
+            hexChars[j * 2] = HEX_ARRAY[v >>> 4];
+            hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
+        }
+        return new String(hexChars);
     }
 }
