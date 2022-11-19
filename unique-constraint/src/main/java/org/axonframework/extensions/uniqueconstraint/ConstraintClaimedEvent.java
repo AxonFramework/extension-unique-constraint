@@ -1,40 +1,58 @@
 package org.axonframework.extensions.uniqueconstraint;
 
+/**
+ * Event indicating a constraint was claimed. If this is the last event in the store, the owner field indicates the
+ * current owner. Other aggregates are not allowed to claim the value.
+ *
+ * @author Mitchell Herrijgers
+ * @since 0.0.1
+ */
 public class ConstraintClaimedEvent {
-    private String constraintKey;
+
+    private String constraintName;
     private String constraintValue;
-    private String aggregateId;
+    private String owner;
 
-    public ConstraintClaimedEvent() {
+    private ConstraintClaimedEvent() {
     }
 
-    public ConstraintClaimedEvent(String constraintKey, String constraintValue, String aggregateId) {
-        this.constraintKey = constraintKey;
+    /**
+     * Creates a new claimed event, indicating that the {@code constraintValue} is claimed by the {@code owner}.
+     *
+     * @param constraintName  The constraints' name.
+     * @param constraintValue The constraints' unique value that was claimed.
+     * @param owner           The new owner of the constraint, which is the aggregate identifier.
+     */
+    public ConstraintClaimedEvent(String constraintName, String constraintValue, String owner) {
+        this.constraintName = constraintName;
         this.constraintValue = constraintValue;
-        this.aggregateId = aggregateId;
+        this.owner = owner;
     }
 
-    public String getAggregateId() {
-        return aggregateId;
+    /**
+     * The constraint's name.
+     *
+     * @return The constraint's name.
+     */
+    public String getConstraintName() {
+        return constraintName;
     }
 
+    /**
+     * The constraint's value.
+     *
+     * @return The constraint's value.
+     */
     public String getConstraintValue() {
         return constraintValue;
     }
 
-    public String getConstraintKey() {
-        return constraintKey;
-    }
-
-    public void setConstraintKey(String constraintKey) {
-        this.constraintKey = constraintKey;
-    }
-
-    public void setConstraintValue(String constraintValue) {
-        this.constraintValue = constraintValue;
-    }
-
-    public void setAggregateId(String aggregateId) {
-        this.aggregateId = aggregateId;
+    /**
+     * The constraint's owner.
+     *
+     * @return The constraint's value.
+     */
+    public String getOwner() {
+        return owner;
     }
 }

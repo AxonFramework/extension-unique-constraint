@@ -28,46 +28,17 @@ The datasource will guarantee that the sequence number of all events is correct,
 
 ## Usage
 
-When you want to validate a constraint in your aggregate, you can create a `@CommandHandlerInterceptor`-annotated method
-that looks like the following:
+When you want to validate a constraint in your aggregate, you can implement the `ConstraintCheckingAggregate` interface and 
+annotate any constraints with `@AggregateUniqueConstraint`.
 
 ```java
 @Aggregate
-class Room {
+class Room implements ConstraintCheckingAggregate {
 
     @AggregateIdentifier
     private UUID roomId;
+    @AggregateUniqueConstraint
     private Integer roomNumber;
-
-    @CommandHandlerInterceptor
-    public Object handle(InterceptorChain interceptorChain, UniqueConstraintValidator validator) throws Exception {
-        return validator.forAggregate(() -> roomId)
-                        .addConstraint("RoomNumber", () -> roomNumber)
-                        .checkForInterceptor(interceptorChain);
-    }
-}
-```
-
-This configures the `UniqueConstraintValidator` to validate the `roomNumber` to be unique across aggregates.
-The check will only execute if the field changed during command execution.
-
-### Constructor command handlers
-
-If you want to check this constraint during creation of the aggregate, things will work a little bit differently.
-Constructor command handlers are not intercepted by `@CommandHandlerInterceptor`-annotated methods, so the constraint
-does not trigger. We can solve this in two ways.
-
-#### Creation policy method
-
-Changing your constructor to a method with a `@CreationPolicy` annotation with value `ALWAYS` will act like a
-constructor,
-but will be intercepted by `CommandHandlerInterceptor`. Now your unique constraint will be validated. You can see how
-this looks in the following sample.
-
-```java
-@Aggregate
-class Room {
-    // Fields and such omitted
 
     @CommandHandler
     @CreationPolicy(AggregateCreationPolicy.ALWAYS)
@@ -77,26 +48,12 @@ class Room {
 }
 ```
 
-#### Check during constructor
+This configures the `UniqueConstraintValidator` to validate the `roomNumber` to be unique across aggregates.
+The check will only execute if the field changed during command execution.
 
-Alternatively, you can force the check during execution of the constructor. This would look like the following sample:
-
-```java
-@Aggregate
-class Room {
-
-    // Fields and such omitted
-    @CommandHandler
-    public Room(CreateRoomCommand command, UniqueConstraintValidator validator) {
-        apply(new RoomCreatedEvent(command.getRoomId(), command.getRoomNumber(), command.getRoomDescription()));
-        validator.forAggregate(() -> roomId)
-                 .addConstraint("RoomNumber", () -> roomNumber)
-                 .checkNow(); // Will force the check to be done
-    }
-}
-```
-
-Make sure you do this check after applying the events, so your aggregate contains the appropriate data in its fields.
+This approach requires your aggregate to have no constructors that are able to handle commands.
+Instead of constructors, use a method with a `@CreationPolicy` annotation with value `ALWAYS`.
+This will function in the same way.
 
 ## Configuration
 
@@ -118,36 +75,7 @@ You can add this project as a Spring Boot starter to your project, for example u
 With Spring Boot, everything is configured out of the box.
 
 ### Non-Spring
-
-If you are not using Spring Boot you can add the extension like this:
-
-```xml
-
-<dependency>
-    <groupId>org.axonframework.extensions.uniqueconstraint</groupId>
-    <artifactId>extension-unique-constraint</artifactId>
-    <version>0.0.1</version>
-</dependency>
-```
-
-You will then need to add this module to your configurer:
-
-```java
-public class MyAxonConfigurationBuilder() {
-
-    UniqueConstraintConfigurerModule module = new UniqueConstraintConfigurerModule();
-
-    public Configuration createConfiguration() {
-        Configurer configurer = new DefaultConfiguer();
-        // ... other configuration
-
-        module.configure(configurer);
-
-        return configuer.buildConfiguration();
-    }
-}
-
-```
+Unfortunately, only Spring is currently supported. We will support non-Spring configurations in the future.
 
 ## Storage
 
@@ -169,7 +97,7 @@ The payload of both events will contain all information necessary and looks like
 {
   "constraintKey": "RoomNumber",
   "constraintValue": "E87537C45B02505FDA597F2669CC7A3694D263232A5462D2B48255385004B55C",
-  "aggregateId": "33bfcb4b-f910-4258-aee9-e567463931b3"
+  "owner": "33bfcb4b-f910-4258-aee9-e567463931b3"
 }
 ```
 
