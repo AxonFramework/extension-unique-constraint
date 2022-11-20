@@ -1,4 +1,4 @@
-package org.axonframework.extensions.uniqueconstraint;
+package org.axonframework.extensions.uniqueconstraint.eventstore;
 
 /**
  * Provides a value for a constraint, based on the name of the constraint and the value of the aggregate member.
@@ -8,6 +8,6 @@ package org.axonframework.extensions.uniqueconstraint;
  * @author Mitchell Herrijgers
  */
 @FunctionalInterface
-public interface ConstraintValueProvider {
+public interface ConstraintKeyProvider {
     String determineValue(String constraintName, Object value);
 }

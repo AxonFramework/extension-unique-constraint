@@ -1,22 +1,21 @@
 package org.axonframework.extensions.uniqueconstraint;
 
-import org.axonframework.eventsourcing.eventstore.EventStore;
+import org.axonframework.config.ConfigurerModule;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
  * Automatically configures a {@link UniqueConstraintValidator} to be used within the application.
+ * Does so by configuring the {@link UniqueConstraintConfigurerModule} to be used in the axon configuration.
  *
- * @since 0.0.1
  * @author Mitchell Herrijgers
+ * @since 0.0.1
  */
 @Configuration
 public class UniqueConstraintConfiguration {
 
     @Bean
-    public UniqueConstraintValidator uniqueConstraintValidator(EventStore eventStore) {
-        return UniqueConstraintValidator.builder()
-                                        .eventStore(eventStore)
-                                        .build();
+    public ConfigurerModule uniqueConstraintConfigurerModule() {
+        return new UniqueConstraintConfigurerModule();
     }
 }

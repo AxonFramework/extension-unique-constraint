@@ -1,4 +1,4 @@
-package org.axonframework.extensions.uniqueconstraint;
+package org.axonframework.extensions.uniqueconstraint.eventstore;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -10,7 +10,7 @@ import java.security.MessageDigest;
  * @since 0.0.1
  * @author Mitchell Herrijgers
  */
-public class Sha256ConstraintValueProvider implements ConstraintValueProvider {
+public class Sha256ConstraintKeyProvider implements ConstraintKeyProvider {
 
     private final MessageDigest digest;
 
@@ -18,7 +18,7 @@ public class Sha256ConstraintValueProvider implements ConstraintValueProvider {
      * Creates the provider, looking up the SHA-256 algorithm in the JVM. The SHA-256 algorithm is present in all
      * JDK's since version 8.
      */
-    public Sha256ConstraintValueProvider() {
+    public Sha256ConstraintKeyProvider() {
         try {
             digest = MessageDigest.getInstance("SHA-256");
         } catch (Exception e) {

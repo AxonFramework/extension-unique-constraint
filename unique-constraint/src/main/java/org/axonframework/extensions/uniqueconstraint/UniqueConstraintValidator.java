@@ -1,29 +1,24 @@
 package org.axonframework.extensions.uniqueconstraint;
 
 import org.axonframework.common.BuilderUtils;
-import org.axonframework.eventhandling.DomainEventMessage;
-import org.axonframework.eventhandling.GenericDomainEventMessage;
 import org.axonframework.eventsourcing.eventstore.EventStore;
 import org.axonframework.messaging.InterceptorChain;
-import org.axonframework.messaging.unitofwork.CurrentUnitOfWork;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.Supplier;
 
 /**
- * Component which valides unique constraints agains the {@link EventStore}. Will check values before and after command
+ * Component which valides unique constraints against the {@link EventStore}. Will check values before and after command
  * execution and when will try to (un)claim values when appropriate. When claims are already taken, a
- * {@link ConstraintAlreadyClaimedException} is thrown.
+ * {@link UniqueConstraintClaimException} is thrown.
  *
  * @author Mitchell Herrijgers
  * @since 0.0.1
  */
 public class UniqueConstraintValidator {
 
-    private final EventStore eventStore;
-    private final ConstraintValueProvider constraintValueProvider;
+    private final UniqueConstraintStore constraintStore;
 
     /**
      * Creates a new {@link UniqueConstraintValidator} with the builder's configuration.
@@ -32,8 +27,7 @@ public class UniqueConstraintValidator {
      */
     protected UniqueConstraintValidator(Builder builder) {
         builder.validate();
-        this.eventStore = builder.eventStore;
-        this.constraintValueProvider = builder.constraintValueProvider;
+        this.constraintStore = builder.constraintStore;
     }
 
     /**
@@ -49,8 +43,7 @@ public class UniqueConstraintValidator {
     /**
      * Creates a new builder to construct a new {@link UniqueConstraintValidator}.
      * <p>
-     * Requires the {@link EventStore} to be configured. The {@link ConstraintValueProvider} defaults to a
-     * {@link Sha256ConstraintValueProvider}.
+     * Requires the {@link UniqueConstraintStore} to be configured.
      *
      * @return A builder suitable to construct a new {@link UniqueConstraintValidator}.
      */
@@ -61,11 +54,11 @@ public class UniqueConstraintValidator {
     /**
      * The {@link ValidatorInstance} executes all checks for the unique constraints of the aggregate. You can create one
      * using the {@link #forAggregate(Supplier)} function, and build it further. Executed immediately (without previous
-     * values) when calling {@link #checkNow()}.
+     * values) when calling {@link #check()} .
      * <p>
-     * Recommended usage is through a {@code @CommandHandlerInterceptor} method that uses the
-     * {@link #checkForInterceptor(InterceptorChain)} method. This will use change detection and only execute on
-     * changes.
+     * Recommended usage is by wrapping the command handling method using the
+     * {@link #checkForInterceptor(InterceptorChain)} method. This will use change detection and only execute checks and
+     * claims on changes.
      */
     public class ValidatorInstance {
 
@@ -95,7 +88,6 @@ public class UniqueConstraintValidator {
          * @param interceptorChain The {@link InterceptorChain} provided by the
          *                         {@link org.axonframework.modelling.command.CommandHandlerInterceptor} annotated
          *                         method.
-         * @throws ConstraintAlreadyClaimedException If a constraint was already claimed.
          */
         public Object checkForInterceptor(InterceptorChain interceptorChain) throws Exception {
             Map<String, Object> valuesBefore = getValues();
@@ -111,10 +103,8 @@ public class UniqueConstraintValidator {
         /**
          * Will check the values of the aggregate as they are now. Usable as the last statement in your constructor,
          * after all EventSourcingHandlers have been invoked.
-         *
-         * @throws ConstraintAlreadyClaimedException If a constraint was already claimed.
          */
-        public void checkNow() {
+        public void check() {
             getValues().forEach((key, value) -> executeChecksAndClaimsForConstraint(key, null, value));
         }
 
@@ -125,89 +115,31 @@ public class UniqueConstraintValidator {
         }
 
         private void executeChecksAndClaimsForConstraint(String constraintName, Object oldValue, Object newValue) {
-            String valueBefore = getNullableValue(constraintName, oldValue);
-            String valueAfter = getNullableValue(constraintName, newValue);
+            String valueBefore = getNullableValue(oldValue);
+            String valueAfter = getNullableValue(newValue);
 
             if (valueBefore == null && valueAfter == null) {
                 return;
             }
             if (valueBefore != null && (valueAfter == null || !valueAfter.equals(valueBefore))) {
-                unclaimValue(constraintName, valueBefore);
+                constraintStore.releaseClaimValue(constraintName, valueBefore, getAggregateId());
             }
 
             if (valueAfter != null && (valueBefore == null || !valueBefore.equals(valueAfter))) {
-                checkAndClaimValue(constraintName, valueAfter);
+                constraintStore.checkAndClaimValue(constraintName, valueAfter, getAggregateId());
             }
         }
 
-        private void unclaimValue(String constraintName, String constraintValue) {
-            eventStore.lastSequenceNumberFor(constraintValue).ifPresent(sequence -> {
-                GenericDomainEventMessage<ConstraintUnclaimedEvent> message = new GenericDomainEventMessage<>(
-                        "Constraint" + constraintName,
-                        constraintValue,
-                        sequence + 1,
-                        new ConstraintUnclaimedEvent(constraintName, constraintValue));
-                eventStore.publish(message);
-            });
+
+        private String getNullableValue(Object value) {
+            if (value == null) {
+                return null;
+            }
+            return value.toString();
         }
 
         private String getAggregateId() {
             return aggregateIdSupplier.get().toString();
-        }
-
-        private void checkAndClaimValue(String constraintKey, String constraintValue) {
-            Optional<Long> lastSequence = eventStore.lastSequenceNumberFor(constraintValue);
-            if (lastSequence.isPresent()) {
-                checkClaim(constraintKey, constraintValue, lastSequence.get());
-            } else {
-                doClaim(constraintKey, constraintValue, 0);
-            }
-        }
-
-        private void doClaim(String constraintKey, String constraintValue, long sequenceNumber) {
-            GenericDomainEventMessage<ConstraintClaimedEvent> message = new GenericDomainEventMessage<>(
-                    "Constraint" + constraintKey,
-                    constraintValue,
-                    sequenceNumber,
-                    new ConstraintClaimedEvent(constraintKey,
-                                               constraintValue, getAggregateId()));
-            eventStore.publish(message);
-        }
-
-        private void checkClaim(String constraintName, String valueAfter, Long lastSequence) {
-            DomainEventMessage<?> previousClaim = eventStore.readEvents(valueAfter, lastSequence).next();
-            if (previousClaim.getPayload() instanceof ConstraintUnclaimedEvent) {
-                doClaim(constraintName, valueAfter, lastSequence + 1);
-                return;
-            }
-
-            if (!(previousClaim instanceof ConstraintClaimedEvent)) {
-                CurrentUnitOfWork.get().onPrepareCommit(uow -> {
-                    throw new IllegalArgumentException(
-                            String.format("Unknown event of type %s. Can not process unique constraints.",
-                                          previousClaim.getPayload().getClass().getName()));
-                });
-            }
-
-            ConstraintClaimedEvent event = (ConstraintClaimedEvent) previousClaim.getPayload();
-
-            if (!event.getOwner().equals(getAggregateId())) {
-                CurrentUnitOfWork.get().onPrepareCommit(uow -> {
-                    throw new ConstraintAlreadyClaimedException(
-                            String.format(
-                                    "Unique constraint %s was already claimed by aggregate %s. Can not claim is for aggregate %s.",
-                                    constraintName,
-                                    previousClaim.getPayload(),
-                                    getAggregateId()));
-                });
-            }
-        }
-
-        private String getNullableValue(String constraintName, Object value) {
-            if (value == null) {
-                return null;
-            }
-            return constraintValueProvider.determineValue(constraintName, value);
         }
     }
 
@@ -215,47 +147,33 @@ public class UniqueConstraintValidator {
     /**
      * A new builder to construct a new {@link UniqueConstraintValidator}.
      * <p>
-     * Requires the {@link EventStore} to be configured. The {@link ConstraintValueProvider} defaults to a
-     * {@link Sha256ConstraintValueProvider}.
+     * Requires the {@link UniqueConstraintStore} to be configured.
      */
     public static class Builder {
 
-        private EventStore eventStore;
-        private ConstraintValueProvider constraintValueProvider = new Sha256ConstraintValueProvider();
+        private UniqueConstraintStore constraintStore;
 
         /**
-         * Changes the {@link ConstraintValueProvider} to be used when determining the value of the constraint. Defaults
-         * to the {@link Sha256ConstraintValueProvider} unless changed.
+         * The {@link UniqueConstraintStore} to use when checking constraints. Required to be able to build the
+         * builder.
          *
-         * @param constraintValueProvider The new {@link ConstraintValueProvider}.
+         * @param constraintStore The {@link UniqueConstraintStore} to use.
          * @return The builder, for fluent interfacing.
          */
-        public Builder constraintValueProvider(ConstraintValueProvider constraintValueProvider) {
-            BuilderUtils.assertNonNull(constraintValueProvider, "valueProviderFunction cannot be null!");
-            this.constraintValueProvider = constraintValueProvider;
-            return this;
-        }
-
-        /**
-         * The {@link EventStore} to use when checking constraints against. Required to be able to build the builder.
-         *
-         * @param eventStore The {@link EventStore} to use.
-         * @return
-         */
-        public Builder eventStore(EventStore eventStore) {
-            BuilderUtils.assertNonNull(eventStore, "eventStore cannot be null!");
-            this.eventStore = eventStore;
+        public Builder constraintStore(UniqueConstraintStore constraintStore) {
+            BuilderUtils.assertNonNull(constraintStore, "constraintStore cannot be null!");
+            this.constraintStore = constraintStore;
             return this;
         }
 
         protected void validate() {
-            BuilderUtils.assertNonNull(eventStore, "eventStore cannot be null!");
+            BuilderUtils.assertNonNull(constraintStore, "eventStore cannot be null!");
         }
 
         /**
          * Builds the {@link UniqueConstraintValidator} using the configuration acquired.
          *
-         * @return
+         * @return The {@link UniqueConstraintValidator}
          */
         public UniqueConstraintValidator build() {
             return new UniqueConstraintValidator(this);

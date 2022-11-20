@@ -7,15 +7,11 @@ import java.lang.annotation.Target;
 
 /**
  * Annotation indicating that the annotated field or method should be unique across all instances of this aggregate.
- * Using this annotation requires the following of your aggregate::
- * <ul>
- *     <li>The aggregate should implement {@link ConstraintCheckingAggregate}.</li>
- *     <li>There should be no constructors that handle messages. Use regular methods with {@code @CreationPolicy(ALWAYS)} instead./li>
- *     <li>A field or method should be annotated with {@code @AggregateIdentifier}. This will be used as the id for owning the claim.</li>
- * </ul>
+ * If the constraint's value is owned by another aggregate, the command handling will end in an
+ * {@link UniqueConstraintClaimException}.
  *
- * @since 0.0.1
  * @author Mitchell Herrijgers
+ * @since 0.0.1
  */
 @Target({ElementType.FIELD, ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)

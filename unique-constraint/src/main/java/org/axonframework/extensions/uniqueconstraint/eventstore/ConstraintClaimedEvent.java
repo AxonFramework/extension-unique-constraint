@@ -1,4 +1,4 @@
-package org.axonframework.extensions.uniqueconstraint;
+package org.axonframework.extensions.uniqueconstraint.eventstore;
 
 /**
  * Event indicating a constraint was claimed. If this is the last event in the store, the owner field indicates the

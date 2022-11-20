@@ -1,4 +1,4 @@
-package org.axonframework.extensions.uniqueconstraint;
+package org.axonframework.extensions.uniqueconstraint.eventstore;
 
 /**
  * Event indicating a constraint was unclaimed. If this is the last event in the store for the constraint value, the
@@ -10,7 +10,7 @@ package org.axonframework.extensions.uniqueconstraint;
 public class ConstraintUnclaimedEvent {
 
     private String constraintName;
-    private String constraintValue;
+    private String constraintKey;
 
     private ConstraintUnclaimedEvent() {
     }
@@ -18,12 +18,12 @@ public class ConstraintUnclaimedEvent {
     /**
      * Creates a new unclaimed event with all required information.
      *
-     * @param constraintName  The constraints' name.
-     * @param constraintValue The constraints' unique value that was unclaimed.
+     * @param constraintName The constraints' name.
+     * @param constraintKey  The constraints' unique value that was unclaimed.
      */
-    public ConstraintUnclaimedEvent(String constraintName, String constraintValue) {
+    public ConstraintUnclaimedEvent(String constraintName, String constraintKey) {
         this.constraintName = constraintName;
-        this.constraintValue = constraintValue;
+        this.constraintKey = constraintKey;
     }
 
     /**
@@ -40,7 +40,7 @@ public class ConstraintUnclaimedEvent {
      *
      * @return The constraint's value.
      */
-    public String getConstraintValue() {
-        return constraintValue;
+    public String getConstraintKey() {
+        return constraintKey;
     }
 }
