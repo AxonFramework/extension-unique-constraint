@@ -30,8 +30,9 @@ public class UniqueConstraintConfigurerModule implements ConfigurerModule {
                                                    .build());
 
         configurer.onStart(() -> {
-            UniqueConstraintHandlerEnhancerDefinition.uniqueConstraintValidator =
-                    configurer.buildConfiguration().getComponent(UniqueConstraintValidator.class);
+            UniqueConstraintValidator validator = configurer.buildConfiguration()
+                                                            .getComponent(UniqueConstraintValidator.class);
+            UniqueConstraintHandlerEnhancerDefinition.setUniqueConstraintValidator(validator);
         });
     }
 }
