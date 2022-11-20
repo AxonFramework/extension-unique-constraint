@@ -4,7 +4,7 @@
 **Experimental** extension to [Axon Framework](https://axoniq.io) that makes it easier for uniqueness
 constraints to be enforced across multiple instances of an aggregate.
 
-**No release is currently available yet.**
+> :warning: **No release is currently publicly available yet.**
 
 ## Simple Usage
 
@@ -32,6 +32,8 @@ This configures the `UniqueConstraintValidator` to validate the `roomNumber` to 
 The check will only execute if the field changed during command execution.
 
 ## Warnings
+The extension comes with two warnings that should be kept in mind when using it.
+
 > :warning: Having constraints **can** be a symptom of bad aggregate design.
 Unique values are best kept as aggregate identifiers since their uniqueness is guaranteed.
 However, sometimes this can be useful when the identity of an object remains the same despite the unique field being changed.
@@ -42,8 +44,9 @@ multiple aggregate identifiers in one transaction; the one of the aggregate and 
 **Using any form of sharding in the future will void this guarantee**. 
 Currently Axon Server does not support this, but it might in the future. Use with care.
 
-These two warnings are probably why this extension will stay an extension,
-and not make it into the core framework. 
+These two warnings are why this extension will most likely stay an extension,
+and not make it into the core framework. Keeping it an extension this makes usage of unique constraints 
+a deliberate choice, which is the way we want it. 
 
 ## Configuration
 
