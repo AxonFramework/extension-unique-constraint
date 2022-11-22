@@ -1,4 +1,4 @@
-package org.axonframework.extensions.uniqueconstraint.eventstore;
+package org.axonframework.extensions.uniqueconstraint;
 
 /**
  * Provides a value for a constraint, based on the name of the constraint and the value of the aggregate member.

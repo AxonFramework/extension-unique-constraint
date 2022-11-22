@@ -1,12 +1,11 @@
-package org.axonframework.extensions.uniqueconstraint.eventstore;
+package org.axonframework.extensions.uniqueconstraint;
 
 import org.axonframework.common.BuilderUtils;
 import org.axonframework.eventhandling.DomainEventMessage;
 import org.axonframework.eventhandling.GenericDomainEventMessage;
 import org.axonframework.eventsourcing.eventstore.EventStore;
-import org.axonframework.extensions.uniqueconstraint.UniqueConstraintClaimException;
-import org.axonframework.extensions.uniqueconstraint.UniqueConstraintStore;
-import org.axonframework.messaging.unitofwork.CurrentUnitOfWork;
+import org.axonframework.extensions.uniqueconstraint.events.ConstraintClaimedEvent;
+import org.axonframework.extensions.uniqueconstraint.events.ConstraintReleasedEvent;
 
 import java.util.Optional;
 import java.util.function.BiConsumer;
@@ -67,11 +66,11 @@ public class EventStoreUniqueConstraintStore implements UniqueConstraintStore {
     }
 
     private void doRelease(String constraintName, String constraintKey, Long lastSequenceNumber) {
-        GenericDomainEventMessage<ConstraintUnclaimedEvent> message = new GenericDomainEventMessage<>(
+        GenericDomainEventMessage<ConstraintReleasedEvent> message = new GenericDomainEventMessage<>(
                 "Constraint" + constraintName,
                 constraintKey,
                 lastSequenceNumber + 1,
-                new ConstraintUnclaimedEvent(constraintName, constraintKey));
+                new ConstraintReleasedEvent(constraintName, constraintKey));
         eventStore.publish(message);
     }
 
@@ -89,14 +88,12 @@ public class EventStoreUniqueConstraintStore implements UniqueConstraintStore {
     }
 
     private void throwDifferentOwnerException(String constraintName, String owner, ConstraintClaimedEvent event) {
-        CurrentUnitOfWork.get().onPrepareCommit(uow -> {
-            throw new UniqueConstraintClaimException(
-                    String.format(
-                            "Unique constraint %s was claimed by owner %s. Can not change claims is for aggregate %s.",
-                            constraintName,
-                            event.getOwner(),
-                            owner));
-        });
+        throw new UniqueConstraintClaimException(
+                String.format(
+                        "Unique constraint %s was claimed by owner %s. Can not change claims is for aggregate %s.",
+                        constraintName,
+                        event.getOwner(),
+                        owner));
     }
 
     private void doClaim(String constraintName, String constraintKey, long previousSequenceNumber, String owner) {
@@ -120,28 +117,23 @@ public class EventStoreUniqueConstraintStore implements UniqueConstraintStore {
         Optional<DomainEventMessage<?>> eventMessage = lastSequenceNumber
                 .map(lastSequence -> eventStore.readEvents(constraintKey, lastSequence).next());
         if (!eventMessage.isPresent()) {
-            CurrentUnitOfWork.get().onPrepareCommit(uow -> {
-                throw new IllegalArgumentException(
-                        String.format("Was unable to fetch event for constraint key %s and sequence number %s",
-                                      constraintKey, lastSequenceNumber.get()));
-            });
-            return;
+            throw new IllegalArgumentException(
+                    String.format("Was unable to fetch event for constraint key %s and sequence number %s",
+                                  constraintKey, lastSequenceNumber.get()));
         }
         Object payload = eventMessage.get().getPayload();
         if (payload instanceof ConstraintClaimedEvent) {
             claimedEventConsumer.accept(eventMessage.get().getSequenceNumber(), (ConstraintClaimedEvent) payload);
             return;
         }
-        if (payload instanceof ConstraintUnclaimedEvent) {
+        if (payload instanceof ConstraintReleasedEvent) {
             unclaimedEventConsumer.accept(eventMessage.get().getSequenceNumber());
             return;
         }
 
-        CurrentUnitOfWork.get().onPrepareCommit(uow -> {
-            throw new IllegalArgumentException(
-                    String.format("Unknown event of type %s. Can not process unique constraints.",
-                                  payload.getClass().getName()));
-        });
+        throw new IllegalArgumentException(
+                String.format("Unknown event of type %s. Can not process unique constraints.",
+                              payload.getClass().getName()));
     }
 
     /**

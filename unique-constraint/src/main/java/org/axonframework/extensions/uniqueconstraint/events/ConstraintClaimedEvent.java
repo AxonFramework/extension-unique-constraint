@@ -1,4 +1,4 @@
-package org.axonframework.extensions.uniqueconstraint.eventstore;
+package org.axonframework.extensions.uniqueconstraint.events;
 
 /**
  * Event indicating a constraint was claimed. If this is the last event in the store, the owner field indicates the
@@ -10,7 +10,7 @@ package org.axonframework.extensions.uniqueconstraint.eventstore;
 public class ConstraintClaimedEvent {
 
     private String constraintName;
-    private String constraintValue;
+    private String constraintKey;
     private String owner;
 
     private ConstraintClaimedEvent() {
@@ -20,12 +20,12 @@ public class ConstraintClaimedEvent {
      * Creates a new claimed event, indicating that the {@code constraintValue} is claimed by the {@code owner}.
      *
      * @param constraintName  The constraints' name.
-     * @param constraintValue The constraints' unique value that was claimed.
+     * @param constraintKey The constraints' unique value that was claimed.
      * @param owner           The new owner of the constraint, which is the aggregate identifier.
      */
-    public ConstraintClaimedEvent(String constraintName, String constraintValue, String owner) {
+    public ConstraintClaimedEvent(String constraintName, String constraintKey, String owner) {
         this.constraintName = constraintName;
-        this.constraintValue = constraintValue;
+        this.constraintKey = constraintKey;
         this.owner = owner;
     }
 
@@ -43,8 +43,8 @@ public class ConstraintClaimedEvent {
      *
      * @return The constraint's value.
      */
-    public String getConstraintValue() {
-        return constraintValue;
+    public String getConstraintKey() {
+        return constraintKey;
     }
 
     /**

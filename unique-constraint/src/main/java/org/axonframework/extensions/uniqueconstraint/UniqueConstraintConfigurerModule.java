@@ -2,7 +2,6 @@ package org.axonframework.extensions.uniqueconstraint;
 
 import org.axonframework.config.Configurer;
 import org.axonframework.config.ConfigurerModule;
-import org.axonframework.extensions.uniqueconstraint.eventstore.EventStoreUniqueConstraintStore;
 
 /**
  * Configures Axon Framework's configuration to understand the {@link AggregateUniqueConstraint} annotation by

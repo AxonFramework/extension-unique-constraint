@@ -1,4 +1,4 @@
-package org.axonframework.extensions.uniqueconstraint.eventstore;
+package org.axonframework.extensions.uniqueconstraint;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
