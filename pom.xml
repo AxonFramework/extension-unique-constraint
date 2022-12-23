@@ -21,7 +21,7 @@
 
         <axon.version>4.6.2</axon.version>
         <spring.version>5.3.23</spring.version>
-        <spring-boot.version>2.7.5</spring-boot.version>
+        <spring-boot.version>2.7.7</spring-boot.version>
     </properties>
 
     <inceptionYear>2022</inceptionYear>
